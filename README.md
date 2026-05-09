@@ -1,6 +1,6 @@
-# 健身房管理系统
+# FitCore · 健身房综合管理平台
 
-基于 **React + Node.js + MySQL** 的全栈健身房管理系统，覆盖会员、会籍、课程预约、商品库存、收银台、财务报表、数据看板等完整业务场景。
+> 基于 **React 18 + Node.js 20 + MySQL 8** 的全栈健身房管理系统，覆盖会员、会籍、课程预约、商品库存、收银台、财务报表、数据看板等完整业务场景。支持 Docker 一键部署。
 
 ## 技术栈
 
@@ -11,6 +11,15 @@
 | 数据库 | MySQL 8 |
 | 部署 | Docker Compose（一键启动） |
 | 测试 | Jest + Supertest（冒烟测试） |
+
+## 项目亮点
+
+- 前后端分离，TypeScript 类型安全 + Zod 运行时校验双重保障
+- RBAC 权限体系细化到按钮级别，中间件统一鉴权
+- 课程预约基于数据库行锁实现容量并发安全
+- node-cron 定时任务自动处理会籍过期
+- ECharts 数据看板实时呈现运营指标
+- Docker Compose 一键启动，CI/CD 友好
 
 ## 功能概览
 
@@ -28,7 +37,7 @@
 ## 目录结构
 
 ```
-健身房管理系统/
+FitCore/
 ├─ client/               # React 前端
 │   ├─ src/pages/        # 页面组件（Dashboard/Members/Courses/Finance/System...）
 │   ├─ src/api/          # API 封装
@@ -111,17 +120,16 @@ npm test
 | 变量 | 默认值 | 说明 |
 |---|---|---|
 | `PORT` | 4000 | 后端端口 |
+| `NODE_ENV` | development | 运行环境 |
 | `DB_HOST` | 127.0.0.1 | 数据库地址 |
+| `DB_PORT` | 3306 | 数据库端口 |
 | `DB_NAME` | jianshenfang | 数据库名 |
 | `DB_USER` | root | 数据库用户 |
 | `DB_PASSWORD` | 123456 | 数据库密码 |
-| `JWT_SECRET` | ... | JWT 签名密钥（生产环境务必修改） |
+| `JWT_SECRET` | change-me-in-production | JWT 签名密钥（生产环境务必修改） |
+| `JWT_EXPIRES_IN` | 2h | Token 有效期 |
+| `LOG_LEVEL` | info | 日志级别 |
 
-## 阶段里程碑
+## License
 
-- [x] Pause 1 · 基础骨架与数据库设计
-- [x] Pause 2 · 鉴权与基础管理（RBAC、用户/角色/权限、审计日志）
-- [x] Pause 3 · 会员与会籍核心（办卡/续费/挂起/转让/体测/过期提醒）
-- [x] Pause 4 · 课程、预约与教练（排课周视图/容量锁/签到扣次/业绩）
-- [x] Pause 5 · 商品、订单与财务（收银台/多支付/退款/日月报表）
-- [x] Pause 6 · 数据看板、打磨与部署（ECharts/Docker/测试/ErrorBoundary）
+MIT
