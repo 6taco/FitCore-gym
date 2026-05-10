@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useDebounce } from '@/hooks/useDebounce';
 import {
   Button, Card, Form, Input, Modal, Popconfirm, Select, Space, Switch, Table, Tag, message,
 } from 'antd';
@@ -23,6 +24,8 @@ export default function UserListPage() {
 
   const [roles, setRoles] = useState<RoleItem[]>([]);
 
+  const debouncedKeyword = useDebounce(keyword, 300);
+
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<SystemUser | null>(null);
   const [form] = Form.useForm();
@@ -43,7 +46,7 @@ export default function UserListPage() {
   };
 
   useEffect(() => { apiRoleList().then(setRoles); }, []);
-  useEffect(() => { load(); }, [page, pageSize]);
+  useEffect(() => { load(); }, [page, pageSize, debouncedKeyword]);
 
   const onSearch = () => { if (page === 1) load(); else setPage(1); };
   const onReset = () => { setKeyword(''); setRoleId(undefined); setPage(1); };

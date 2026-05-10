@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useDebounce } from '@/hooks/useDebounce';
 import {
   Avatar, Button, Card, Input, Popconfirm, Select, Space, Table, Tag, message, Upload, Modal,
 } from 'antd';
@@ -21,6 +22,8 @@ export default function MembersPage() {
   const [keyword, setKeyword] = useState('');
   const [status, setStatus] = useState<number | undefined>();
 
+  const debouncedKeyword = useDebounce(keyword, 300);
+
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Member | null>(null);
 
@@ -34,7 +37,7 @@ export default function MembersPage() {
       setTotal(res.total);
     } finally { setLoading(false); }
   };
-  useEffect(() => { load(); }, [page, pageSize]);
+  useEffect(() => { load(); }, [page, pageSize, debouncedKeyword]);
 
   const onSearch = () => (page === 1 ? load() : setPage(1));
   const onReset = () => { setKeyword(''); setStatus(undefined); setPage(1); };

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useDebounce } from '@/hooks/useDebounce';
 import { Button, Card, DatePicker, Input, Space, Table, Tag, Typography } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { ReloadOutlined } from '@ant-design/icons';
@@ -16,6 +17,7 @@ export default function AuditLogPage() {
   const [loading, setLoading] = useState(false);
   const [keyword, setKeyword] = useState('');
   const [range, setRange] = useState<[Dayjs, Dayjs] | null>(null);
+  const debouncedKeyword = useDebounce(keyword, 300);
 
   const load = async () => {
     setLoading(true);
@@ -30,7 +32,7 @@ export default function AuditLogPage() {
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { load(); }, [page, pageSize]);
+  useEffect(() => { load(); }, [page, pageSize, debouncedKeyword]);
 
   const columns: ColumnsType<AuditLogItem> = [
     { title: '时间', dataIndex: 'created_at', width: 170, render: (v) => dayjs(v).format('YYYY-MM-DD HH:mm:ss') },

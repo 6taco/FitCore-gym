@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { useDebounce } from '@/hooks/useDebounce';
 import {
   Card, Table, Button, Space, Select, Spin, DatePicker, Tag, Statistic, message, Modal, Typography,
 } from 'antd';
@@ -34,6 +35,8 @@ export default function CheckIns() {
   const [members, setMembers] = useState<Member[]>([]);
   const [selectedMember, setSelectedMember] = useState<number | null>(null);
   const [searching, setSearching] = useState(false);
+  const [memberKeyword, setMemberKeyword] = useState('');
+  const debouncedMemberKw = useDebounce(memberKeyword, 300);
 
   const [qrOpen, setQrOpen] = useState(false);
   const [qrToken, setQrToken] = useState('');
@@ -133,14 +136,13 @@ export default function CheckIns() {
 
   useEffect(() => { load(); }, [load]);
 
-  const onSearchMember = async (kw: string) => {
-    if (!kw) return;
+  useEffect(() => {
+    if (!debouncedMemberKw) return;
     setSearching(true);
-    try {
-      const r = await apiMemberList({ keyword: kw, pageSize: 20 });
-      setMembers(r.list);
-    } finally { setSearching(false); }
-  };
+    apiMemberList({ keyword: debouncedMemberKw, pageSize: 20 })
+      .then((r) => setMembers(r.list))
+      .finally(() => setSearching(false));
+  }, [debouncedMemberKw]);
 
   const onCheckIn = async () => {
     if (!selectedMember) return;
@@ -171,7 +173,7 @@ export default function CheckIns() {
           <Can code="checkin:manage">
             <Select
               showSearch placeholder="搜索会员" style={{ width: 260 }}
-              filterOption={false} onSearch={onSearchMember}
+              filterOption={false} onSearch={setMemberKeyword}
               value={selectedMember || undefined}
               onChange={(v) => setSelectedMember(v)}
               notFoundContent={searching ? <Spin size="small" /> : '输入关键字搜索'}

@@ -1,33 +1,44 @@
+import { lazy, Suspense } from 'react';
 import { Navigate, createBrowserRouter } from 'react-router-dom';
-import LoginPage from '@/pages/Login';
+import { Spin } from 'antd';
 import MainLayout from '@/layouts/MainLayout';
-import Dashboard from '@/pages/Dashboard';
-import Forbidden from '@/pages/Error/Forbidden';
-import UserListPage from '@/pages/System/UserList';
-import RoleListPage from '@/pages/System/RoleList';
-import AuditLogPage from '@/pages/System/AuditLog';
-import SettingsPage from '@/pages/System/Settings';
-import MembersPage from '@/pages/Members';
-import MembershipsPage from '@/pages/Memberships';
-import CheckInsPage from '@/pages/Members/CheckIns';
-import SchedulePage from '@/pages/Courses/SchedulePage';
-import CourseLibraryPage from '@/pages/Courses/Library';
-import CoachesPage from '@/pages/Courses/Coaches';
-import CoachRankingPage from '@/pages/Courses/CoachRanking';
-import ProductsPage from '@/pages/Finance/Products';
-import CashierPage from '@/pages/Finance/Cashier';
-import OrdersPage from '@/pages/Finance/Orders';
-import ReportsPage from '@/pages/Finance/Reports';
-import NotFound from '@/pages/Error/NotFound';
-import MockPay from '@/pages/Finance/MockPay';
-import QrCheckIn from '@/pages/Members/QrCheckIn';
 import { RequireAuth, RequirePermission } from './guards';
 
+/* -------- 路由懒加载：每个页面独立 chunk，首屏只加载当前路由 -------- */
+const LoginPage       = lazy(() => import('@/pages/Login'));
+const Dashboard       = lazy(() => import('@/pages/Dashboard'));
+const Forbidden       = lazy(() => import('@/pages/Error/Forbidden'));
+const NotFound        = lazy(() => import('@/pages/Error/NotFound'));
+const MembersPage     = lazy(() => import('@/pages/Members'));
+const MembershipsPage = lazy(() => import('@/pages/Memberships'));
+const CheckInsPage    = lazy(() => import('@/pages/Members/CheckIns'));
+const QrCheckIn       = lazy(() => import('@/pages/Members/QrCheckIn'));
+const SchedulePage    = lazy(() => import('@/pages/Courses/SchedulePage'));
+const CourseLibraryPage = lazy(() => import('@/pages/Courses/Library'));
+const CoachesPage     = lazy(() => import('@/pages/Courses/Coaches'));
+const CoachRankingPage = lazy(() => import('@/pages/Courses/CoachRanking'));
+const ProductsPage    = lazy(() => import('@/pages/Finance/Products'));
+const CashierPage     = lazy(() => import('@/pages/Finance/Cashier'));
+const OrdersPage      = lazy(() => import('@/pages/Finance/Orders'));
+const ReportsPage     = lazy(() => import('@/pages/Finance/Reports'));
+const MockPay         = lazy(() => import('@/pages/Finance/MockPay'));
+const UserListPage    = lazy(() => import('@/pages/System/UserList'));
+const RoleListPage    = lazy(() => import('@/pages/System/RoleList'));
+const AuditLogPage    = lazy(() => import('@/pages/System/AuditLog'));
+const SettingsPage    = lazy(() => import('@/pages/System/Settings'));
+
+/* Suspense 全局加载占位 */
+const LazyLoad = ({ children }: { children: React.ReactNode }) => (
+  <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '40vh' }}><Spin size="large" /></div>}>
+    {children}
+  </Suspense>
+);
+
 export const router = createBrowserRouter([
-  { path: '/login', element: <LoginPage /> },
-  { path: '/mock-pay/:orderId', element: <MockPay /> },
-  { path: '/qr-checkin', element: <QrCheckIn /> },
-  { path: '/qr-checkin/:token', element: <QrCheckIn /> },
+  { path: '/login', element: <LazyLoad><LoginPage /></LazyLoad> },
+  { path: '/mock-pay/:orderId', element: <LazyLoad><MockPay /></LazyLoad> },
+  { path: '/qr-checkin', element: <LazyLoad><QrCheckIn /></LazyLoad> },
+  { path: '/qr-checkin/:token', element: <LazyLoad><QrCheckIn /></LazyLoad> },
   {
     path: '/',
     element: (
@@ -36,13 +47,13 @@ export const router = createBrowserRouter([
       </RequireAuth>
     ),
     children: [
-      { index: true, element: <Dashboard /> },
-      { path: '403', element: <Forbidden /> },
+      { index: true, element: <LazyLoad><Dashboard /></LazyLoad> },
+      { path: '403', element: <LazyLoad><Forbidden /></LazyLoad> },
       {
         path: 'members',
         element: (
           <RequirePermission code="member:view">
-            <MembersPage />
+            <LazyLoad><MembersPage /></LazyLoad>
           </RequirePermission>
         ),
       },
@@ -50,7 +61,7 @@ export const router = createBrowserRouter([
         path: 'memberships',
         element: (
           <RequirePermission code="membership:view">
-            <MembershipsPage />
+            <LazyLoad><MembershipsPage /></LazyLoad>
           </RequirePermission>
         ),
       },
@@ -58,7 +69,7 @@ export const router = createBrowserRouter([
         path: 'check-ins',
         element: (
           <RequirePermission code="checkin:view">
-            <CheckInsPage />
+            <LazyLoad><CheckInsPage /></LazyLoad>
           </RequirePermission>
         ),
       },
@@ -70,7 +81,7 @@ export const router = createBrowserRouter([
         path: 'courses/schedule',
         element: (
           <RequirePermission code="course:view">
-            <SchedulePage />
+            <LazyLoad><SchedulePage /></LazyLoad>
           </RequirePermission>
         ),
       },
@@ -78,7 +89,7 @@ export const router = createBrowserRouter([
         path: 'courses/library',
         element: (
           <RequirePermission code="course:view">
-            <CourseLibraryPage />
+            <LazyLoad><CourseLibraryPage /></LazyLoad>
           </RequirePermission>
         ),
       },
@@ -86,7 +97,7 @@ export const router = createBrowserRouter([
         path: 'courses/coaches',
         element: (
           <RequirePermission code="course:view">
-            <CoachesPage />
+            <LazyLoad><CoachesPage /></LazyLoad>
           </RequirePermission>
         ),
       },
@@ -94,7 +105,7 @@ export const router = createBrowserRouter([
         path: 'courses/ranking',
         element: (
           <RequirePermission code="member:view">
-            <CoachRankingPage />
+            <LazyLoad><CoachRankingPage /></LazyLoad>
           </RequirePermission>
         ),
       },
@@ -102,7 +113,7 @@ export const router = createBrowserRouter([
         path: 'products',
         element: (
           <RequirePermission code="product:view">
-            <ProductsPage />
+            <LazyLoad><ProductsPage /></LazyLoad>
           </RequirePermission>
         ),
       },
@@ -114,7 +125,7 @@ export const router = createBrowserRouter([
         path: 'finance/cashier',
         element: (
           <RequirePermission code="order:manage">
-            <CashierPage />
+            <LazyLoad><CashierPage /></LazyLoad>
           </RequirePermission>
         ),
       },
@@ -122,7 +133,7 @@ export const router = createBrowserRouter([
         path: 'finance/orders',
         element: (
           <RequirePermission code="order:view">
-            <OrdersPage />
+            <LazyLoad><OrdersPage /></LazyLoad>
           </RequirePermission>
         ),
       },
@@ -130,7 +141,7 @@ export const router = createBrowserRouter([
         path: 'finance/reports',
         element: (
           <RequirePermission code="report:view">
-            <ReportsPage />
+            <LazyLoad><ReportsPage /></LazyLoad>
           </RequirePermission>
         ),
       },
@@ -138,7 +149,7 @@ export const router = createBrowserRouter([
         path: 'system/users',
         element: (
           <RequirePermission code="system:user:view">
-            <UserListPage />
+            <LazyLoad><UserListPage /></LazyLoad>
           </RequirePermission>
         ),
       },
@@ -146,7 +157,7 @@ export const router = createBrowserRouter([
         path: 'system/roles',
         element: (
           <RequirePermission code="system:role:view">
-            <RoleListPage />
+            <LazyLoad><RoleListPage /></LazyLoad>
           </RequirePermission>
         ),
       },
@@ -154,7 +165,7 @@ export const router = createBrowserRouter([
         path: 'system/audit',
         element: (
           <RequirePermission code="system:audit:view">
-            <AuditLogPage />
+            <LazyLoad><AuditLogPage /></LazyLoad>
           </RequirePermission>
         ),
       },
@@ -162,11 +173,11 @@ export const router = createBrowserRouter([
         path: 'system/settings',
         element: (
           <RequirePermission code="system:role:manage">
-            <SettingsPage />
+            <LazyLoad><SettingsPage /></LazyLoad>
           </RequirePermission>
         ),
       },
-      { path: '*', element: <NotFound /> },
+      { path: '*', element: <LazyLoad><NotFound /></LazyLoad> },
     ],
   },
 ]);
