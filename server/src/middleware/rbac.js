@@ -1,27 +1,55 @@
 import { Role, Permission } from '../models/index.js';
 import { AppError } from '../utils/response.js';
+import redis, { isRedisReady } from '../utils/redis.js';
 
-// 简单内存缓存：role_id -> Set<permission_code>
-const cache = new Map();
-let cacheAt = 0;
-const CACHE_TTL = 60 * 1000;
+const PERM_PREFIX = 'perm:';
+const PERM_TTL = 30 * 60; // 30 分钟
+
+// 内存降级缓存（Redis 不可用时使用）
+const memCache = new Map();
+let memCacheAt = 0;
+const MEM_TTL = 60 * 1000;
 
 async function loadPermissions(roleId) {
-  if (cache.has(roleId) && Date.now() - cacheAt < CACHE_TTL) {
-    return cache.get(roleId);
+  // —— Redis 可用时优先走 Redis ——
+  if (isRedisReady()) {
+    const key = `${PERM_PREFIX}${roleId}`;
+    const cached = await redis.get(key);
+    if (cached) return new Set(JSON.parse(cached));
+
+    const role = await Role.findByPk(roleId, {
+      include: [{ model: Permission, as: 'permissions', attributes: ['code'] }],
+    });
+    const codes = (role?.permissions || []).map((p) => p.code);
+    await redis.set(key, JSON.stringify(codes), 'EX', PERM_TTL);
+    return new Set(codes);
+  }
+
+  // —— Redis 不可用时降级到内存缓存 ——
+  if (memCache.has(roleId) && Date.now() - memCacheAt < MEM_TTL) {
+    return memCache.get(roleId);
   }
   const role = await Role.findByPk(roleId, {
     include: [{ model: Permission, as: 'permissions', attributes: ['code'] }],
   });
   const set = new Set((role?.permissions || []).map((p) => p.code));
-  cache.set(roleId, set);
-  cacheAt = Date.now();
+  memCache.set(roleId, set);
+  memCacheAt = Date.now();
   return set;
 }
 
-export function clearPermissionCache() {
-  cache.clear();
-  cacheAt = 0;
+export async function clearPermissionCache(roleId) {
+  if (isRedisReady()) {
+    if (roleId) {
+      await redis.del(`${PERM_PREFIX}${roleId}`);
+    } else {
+      // 清除所有权限缓存
+      const keys = await redis.keys(`${PERM_PREFIX}*`);
+      if (keys.length) await redis.del(...keys);
+    }
+  }
+  memCache.clear();
+  memCacheAt = 0;
 }
 
 export function requireRole(...roles) {

@@ -4,6 +4,10 @@ import { User, Role } from '../models/index.js';
 import { signToken, signRefreshToken, verifyRefreshToken } from '../middleware/auth.js';
 import { getRolePermissionCodes } from '../middleware/rbac.js';
 import { success, AppError } from '../utils/response.js';
+import redis, { isRedisReady } from '../utils/redis.js';
+
+const RT_PREFIX = 'rt:';
+const RT_TTL = 7 * 24 * 60 * 60; // 7 天
 
 const loginSchema = z.object({
   username: z.string().min(1, '请输入用户名'),
@@ -32,6 +36,11 @@ export async function login(req, res, next) {
     };
     const token = signToken(tokenPayload);
     const refreshToken = signRefreshToken({ id: user.id });
+
+    // 将 refreshToken 存入 Redis，用于后续验证和主动失效
+    if (isRedisReady()) {
+      await redis.set(`${RT_PREFIX}${user.id}`, refreshToken, 'EX', RT_TTL);
+    }
 
     const permissions = await getRolePermissionCodes(user.role_id);
 
@@ -83,6 +92,15 @@ export async function refreshTokenHandler(req, res, next) {
     const { refreshToken } = req.body;
     if (!refreshToken) throw new AppError('缺少 refreshToken', 400);
     const decoded = verifyRefreshToken(refreshToken);
+
+    // Redis 可用时校验 token 是否已被主动失效
+    if (isRedisReady()) {
+      const stored = await redis.get(`${RT_PREFIX}${decoded.id}`);
+      if (stored && stored !== refreshToken) {
+        throw new AppError('refreshToken 已失效（可能已在其他设备登录）', 401, 401);
+      }
+    }
+
     const user = await User.findByPk(decoded.id, { include: [{ model: Role, as: 'role' }] });
     if (!user || user.status !== 1) throw new AppError('用户不存在或已停用', 401, 401);
 
@@ -93,6 +111,12 @@ export async function refreshTokenHandler(req, res, next) {
       roleCode: user.role?.code,
     });
     const newRefreshToken = signRefreshToken({ id: user.id });
+
+    // 更新 Redis 中的 refreshToken
+    if (isRedisReady()) {
+      await redis.set(`${RT_PREFIX}${user.id}`, newRefreshToken, 'EX', RT_TTL);
+    }
+
     const permissions = await getRolePermissionCodes(user.role_id);
 
     res.json(success({
@@ -125,6 +149,12 @@ export async function changePassword(req, res, next) {
     if (!ok) throw new AppError('原密码不正确', 400);
     user.password_hash = await bcrypt.hash(newPassword, 10);
     await user.save();
+
+    // 修改密码后主动让旧 refreshToken 失效
+    if (isRedisReady()) {
+      await redis.del(`${RT_PREFIX}${user.id}`);
+    }
+
     res.json(success(null, '密码修改成功'));
   } catch (err) {
     if (err.name === 'ZodError') return next(new AppError(err.issues[0].message, 400));

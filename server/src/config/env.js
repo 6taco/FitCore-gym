@@ -24,6 +24,13 @@ const env = {
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
   },
 
+  redis: {
+    host: process.env.REDIS_HOST || '127.0.0.1',
+    port: Number(process.env.REDIS_PORT) || 6379,
+    password: process.env.REDIS_PASSWORD || '',
+    db: Number(process.env.REDIS_DB) || 0,
+  },
+
   log: {
     level: process.env.LOG_LEVEL || 'info',
   },

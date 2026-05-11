@@ -3,10 +3,12 @@ import env from './config/env.js';
 import logger from './utils/logger.js';
 import { connectDB } from './config/db.js';
 import { scheduleExpireJob } from './jobs/expireMemberships.js';
+import { connectRedis } from './utils/redis.js';
 
 async function bootstrap() {
   try {
     await connectDB();
+    await connectRedis();
     scheduleExpireJob();
     app.listen(env.port, () => {
       logger.info(`API 服务已启动：http://localhost:${env.port}`);

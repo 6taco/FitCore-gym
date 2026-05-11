@@ -41,7 +41,7 @@ export async function createRole(req, res, next) {
     if (data.permissionIds.length) {
       await role.setPermissions(data.permissionIds);
     }
-    clearPermissionCache();
+    await clearPermissionCache();
     res.json(success({ id: role.id }, '创建成功'));
   } catch (err) {
     if (err.name === 'ZodError') return next(new AppError(err.issues[0].message, 400));
@@ -66,7 +66,7 @@ export async function updateRole(req, res, next) {
     if (Array.isArray(data.permissionIds)) {
       await role.setPermissions(data.permissionIds);
     }
-    clearPermissionCache();
+    await clearPermissionCache();
     res.json(success(null, '更新成功'));
   } catch (err) {
     if (err.name === 'ZodError') return next(new AppError(err.issues[0].message, 400));
@@ -84,7 +84,7 @@ export async function deleteRole(req, res, next) {
     const count = await User.count({ where: { role_id: role.id } });
     if (count > 0) throw new AppError(`该角色下尚有 ${count} 个用户，请先迁移`, 400);
     await role.destroy();
-    clearPermissionCache();
+    await clearPermissionCache();
     res.json(success(null, '已删除'));
   } catch (err) { next(err); }
 }
