@@ -1,25 +1,29 @@
 # FitCore · 健身房综合管理平台
 
-> 基于 **React 18 + Node.js 20 + MySQL 8** 的全栈健身房管理系统，覆盖会员、会籍、课程预约、商品库存、收银台、财务报表、数据看板等完整业务场景。支持 Docker 一键部署。
+> 基于 **React 18 + Node.js 20 + TypeScript + MySQL 8** 的全栈健身房管理系统，覆盖会员、会籍、课程预约、商品库存、收银台、财务报表、数据看板等完整业务场景。前后端均采用 TypeScript 开发，支持 Docker 一键部署。
 
 ## 技术栈
 
 | 层 | 技术 |
 |---|---|
 | 前端 | React 18 · Vite · TypeScript · Ant Design 5 · Zustand · React Router 6 · ECharts |
-| 后端 | Node.js 20 · Express 4 · Sequelize 6 · JWT · Zod · Winston · node-cron |
+| 后端 | Node.js 20 · Express 4 · **TypeScript** · Sequelize 6 (class extends Model) · JWT · Zod · Winston · node-cron |
+| 缓存 | Redis（可选，降级至内存） |
 | 数据库 | MySQL 8 |
 | 部署 | Docker Compose（一键启动） |
 | 测试 | Jest + Supertest（冒烟测试） |
 
 ## 项目亮点
 
-- 前后端分离，TypeScript 类型安全 + Zod 运行时校验双重保障
-- RBAC 权限体系细化到按钮级别，中间件统一鉴权
-- 课程预约基于数据库行锁实现容量并发安全
-- node-cron 定时任务自动处理会籍过期
-- ECharts 数据看板实时呈现运营指标
-- Docker Compose 一键启动，CI/CD 友好
+- **全栈 TypeScript**：前端 React + 后端 Express 均为 TypeScript，编译期零错误
+- **Sequelize class extends Model**：所有模型使用类继承 + 属性接口，ORM 层类型安全
+- **双重校验**：TypeScript 编译期类型安全 + Zod 运行时请求体校验
+- **RBAC 权限体系**：4 种角色细化到按钮级别，中间件统一鉴权 + Redis 权限缓存
+- **课程预约并发安全**：基于数据库行锁（SELECT ... FOR UPDATE）实现容量控制
+- **Redis 缓存（优雅降级）**：权限缓存、API 响应缓存、限流计数，Redis 不可用时自动降级至内存
+- **node-cron 定时任务**：自动处理会籍过期 + 即将到期提醒通知
+- **ECharts 数据看板**：营收趋势、会员增长、热门课程 TOP5、库存预警
+- **Docker Compose 一键启动**，CI/CD 友好
 
 ## 功能概览
 
@@ -38,20 +42,30 @@
 
 ```
 FitCore/
-├─ client/               # React 前端
-│   ├─ src/pages/        # 页面组件（Dashboard/Members/Courses/Finance/System...）
-│   ├─ src/api/          # API 封装
+├─ client/                  # React 前端（TypeScript）
+│   ├─ src/pages/           # 页面组件（Dashboard/Members/Courses/Finance/System...）
+│   ├─ src/api/             # API 封装
 │   ├─ Dockerfile
 │   └─ nginx.conf
-├─ server/               # Express 后端
-│   ├─ src/controllers/  # 业务逻辑
-│   ├─ src/models/       # Sequelize 模型
-│   ├─ src/routes/       # 路由
-│   ├─ tests/            # 冒烟测试
+├─ server/                  # Express 后端（TypeScript）
+│   ├─ src/
+│   │   ├─ config/          # 环境变量、数据库连接（env.ts / db.ts）
+│   │   ├─ constants/       # 权限字典（permissions.ts）
+│   │   ├─ controllers/     # 业务控制器（17 个 .ts）
+│   │   ├─ jobs/            # 定时任务（expireMemberships.ts）
+│   │   ├─ middleware/      # 鉴权/RBAC/限流/缓存/审计/错误处理（6 个 .ts）
+│   │   ├─ models/          # Sequelize 模型 class extends Model（18+ .ts）
+│   │   ├─ routes/          # 路由层（7 个 .ts）
+│   │   ├─ types/           # Express 类型扩展（express.d.ts）
+│   │   ├─ utils/           # 工具函数（logger/redis/response/idGen）
+│   │   ├─ app.ts           # Express 应用配置
+│   │   └─ index.ts         # 入口文件
+│   ├─ scripts/             # 数据库初始化/种子/全量巡检（.ts）
+│   ├─ tests/               # 冒烟测试
+│   ├─ tsconfig.json        # TypeScript 配置（strict, ES2022, NodeNext）
 │   └─ Dockerfile
-├─ db/                   # 数据库 DDL
-├─ docs/                 # 设计文档与路线图
-├─ docker-compose.yml    # 一键启动
+├─ db/                      # 数据库 DDL（schema.sql）
+├─ docker-compose.yml       # 一键启动
 └─ README.md
 ```
 
@@ -68,7 +82,7 @@ docker compose up -d
 等待 MySQL 健康检查通过后（约 30 秒），写入种子数据：
 
 ```bash
-docker compose exec server node scripts/seed.js
+docker compose exec server npx tsx scripts/seed.ts
 ```
 
 访问 `http://localhost` 即可。
@@ -128,6 +142,11 @@ npm test
 | `DB_PASSWORD` | 123456 | 数据库密码 |
 | `JWT_SECRET` | change-me-in-production | JWT 签名密钥（生产环境务必修改） |
 | `JWT_EXPIRES_IN` | 2h | Token 有效期 |
+| `JWT_REFRESH_SECRET` | change-me | Refresh Token 签名密钥 |
+| `JWT_REFRESH_EXPIRES_IN` | 7d | Refresh Token 有效期 |
+| `REDIS_HOST` | 127.0.0.1 | Redis 地址（可选，不可用时降级为内存） |
+| `REDIS_PORT` | 6379 | Redis 端口 |
+| `REDIS_PASSWORD` | (空) | Redis 密码 |
 | `LOG_LEVEL` | info | 日志级别 |
 
 ## License
